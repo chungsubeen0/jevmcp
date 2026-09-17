@@ -1,0 +1,42 @@
+[
+  {
+    "id": "completion-gap",
+    "tool": "jev_check_completion",
+    "input": {
+      "task": {
+        "goal": "Guest checkout",
+        "requirements": [
+          {"id": "R1", "text": "Guest order must resolve a canonical user"},
+          {"id": "R2", "text": "Receipt email must send"}
+        ]
+      },
+      "implementation": {
+        "changed_files": ["src/checkout.ts"],
+        "diff_summary": "creates guest user record"
+      },
+      "verification": {
+        "tests": "checkout identity tests passed",
+        "lint": "ok",
+        "typecheck": "ok"
+      }
+    },
+    "mock_answers": {
+      "R1::appears_satisfied": 0.96,
+      "R1::evidence_present": 0.93,
+      "R1::possible_gap": 0.04,
+      "R2::appears_satisfied": 0.40,
+      "R2::evidence_present": 0.22,
+      "R2::possible_gap": 0.81,
+      "scope_appropriate": 0.80,
+      "unresolved_requirement": 0.78,
+      "further_review_warranted": 0.74
+    },
+    "expected": {
+      "signals": {
+        "unresolved_requirement": {"direction": "HIGH", "min": 0.70}
+      },
+      "uncertain_expected": false,
+      "notes": "R2 has no evidence."
+    }
+  }
+]

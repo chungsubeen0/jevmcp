@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Jev MCP local state — never commit keys, cache, or telemetry
+.env.local
+.jev-mcp/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+.DS_Store

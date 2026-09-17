@@ -1,0 +1,12 @@
+{
+  "previous_attempt": {
+    "hypothesis": "Need another null check",
+    "approach": "Add early return",
+    "failure": "still null"
+  },
+  "current_attempt": {
+    "hypothesis": "Need a different null check",
+    "approach": "Move early return",
+    "failure": "still null"
+  }
+}

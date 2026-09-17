@@ -1,0 +1,70 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jev-mcp"
+version = "1.0.0"
+description = "Local MCP server that lets frontier coding agents delegate routine probabilistic judgment to TypeSafe Jev."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [{ name = "Jev MCP" }]
+keywords = ["mcp", "jev", "typesafe", "coding-agents", "judgment"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development",
+]
+dependencies = [
+  "mcp>=1.9.0",
+  "httpx>=0.27.0",
+  "pydantic>=2.7.0",
+  "pydantic-settings>=2.4.0",
+  "pyyaml>=6.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.24.0",
+  "ruff>=0.6.0",
+]
+
+[project.scripts]
+jev-mcp = "jev_mcp.server:main"
+jev-mcp-doctor = "jev_mcp.cli:doctor_main"
+jev-mcp-benchmark = "jev_mcp.cli:benchmark_main"
+jev-mcp-export = "jev_mcp.cli:export_main"
+
+[project.urls]
+Homepage = "https://github.com/jev-mcp/jev-mcp"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jev_mcp"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/jev_mcp" = "jev_mcp"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+markers = [
+  "live: hits a real network service",
+  "typesafe: live TypeSafe / Jev provider",
+  "eval_live: golden evals against hosted Jev",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests", "scripts", "evals"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

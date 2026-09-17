@@ -1,0 +1,13 @@
+[
+  {
+    "id": "C1",
+    "path": "src/webhooks/stripe.ts",
+    "symbol": "resolveUser",
+    "content": "export function resolveUser(event) { return event.userId }"
+  },
+  {
+    "id": "C2",
+    "path": "README.md",
+    "content": "Welcome to the project."
+  }
+]

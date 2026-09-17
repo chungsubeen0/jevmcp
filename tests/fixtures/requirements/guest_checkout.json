@@ -1,0 +1,4 @@
+[
+  {"id": "R1", "text": "Guest order must resolve a canonical user"},
+  {"id": "R2", "text": "Receipt email must send"}
+]

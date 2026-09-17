@@ -1,0 +1,37 @@
+[
+  {
+    "id": "rank-obvious",
+    "tool": "jev_rank_context",
+    "input": {
+      "task_goal": "Fix webhook identity resolution",
+      "current_step": "Inspect identity helpers",
+      "candidates": [
+        {
+          "id": "C1",
+          "path": "src/webhooks/stripe.ts",
+          "symbol": "resolveUser",
+          "content": "export function resolveUser(event) { return event.userId }"
+        },
+        {
+          "id": "C2",
+          "path": "README.md",
+          "symbol": null,
+          "content": "Welcome to the project. We use pnpm."
+        }
+      ]
+    },
+    "mock_answers": {
+      "C1::relevant_to_task": 0.96,
+      "C1::useful_now": 0.91,
+      "C1::likely_noise": 0.03,
+      "C2::relevant_to_task": 0.08,
+      "C2::useful_now": 0.05,
+      "C2::likely_noise": 0.92
+    },
+    "expected": {
+      "signals": {},
+      "uncertain_expected": false,
+      "notes": "README is noise; webhook helper is high."
+    }
+  }
+]

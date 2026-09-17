@@ -1,0 +1,28 @@
+[
+  {
+    "id": "judge-evidence-yes",
+    "tool": "jev_judge",
+    "input": {
+      "state": {
+        "failure": "guest_identity expected UUID but received null",
+        "diff": "resolveGuest now returns null"
+      },
+      "questions": [
+        {
+          "id": "Q1",
+          "question": "Does the supplied evidence suggest the failure is a null identity result?"
+        }
+      ]
+    },
+    "mock_answers": {
+      "Q1": 0.95
+    },
+    "expected": {
+      "signals": {
+        "Q1": {"direction": "HIGH", "min": 0.70}
+      },
+      "uncertain_expected": false,
+      "notes": "Direct evidence match."
+    }
+  }
+]

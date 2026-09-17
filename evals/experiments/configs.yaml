@@ -1,0 +1,39 @@
+# Four-way savings experiment. Do not treat this as a software unit test.
+
+A_frontier_only:
+  jev_enabled: false
+  tools: []
+
+B_triage:
+  jev_enabled: true
+  tools: [jev_triage_failure]
+
+C_triage_and_stuck:
+  jev_enabled: true
+  tools: [jev_triage_failure, jev_compare_attempts]
+
+D_all:
+  jev_enabled: true
+  tools:
+    - jev_triage_failure
+    - jev_compare_attempts
+    - jev_check_completion
+    - jev_rank_context
+    - jev_classify_findings
+    - jev_assess_risk
+    - jev_judge
+
+primary_metric: frontier_inference_cost_per_successful_task
+observables:
+  - task_success
+  - tests_passed
+  - hidden_acceptance
+  - regressions
+  - wall_clock
+  - jev_calls
+  - jev_cost
+  - frontier_tokens_if_observable
+  - context_size_if_observable
+  - iterations
+  - tool_calls
+  - repeated_attempts

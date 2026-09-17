@@ -1,0 +1,21 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pr-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests scripts evals
+      - run: python -c "from jev_mcp import __version__; print(__version__)"
+      - run: pytest -m "not live and not typesafe and not eval_live"
+      - run: python scripts/benchmark.py --provider mock
+      - run: python scripts/eval.py --generate
+      - run: python scripts/eval.py --out eval-results/local/software.json

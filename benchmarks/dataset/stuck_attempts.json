@@ -1,0 +1,75 @@
+[
+  {
+    "id": "stuck-same-strategy",
+    "tool": "jev_compare_attempts",
+    "input": {
+      "task_goal": "Fix null guest identity",
+      "previous_attempt": {
+        "hypothesis": "Need another null check",
+        "approach": "Add if user is None: return",
+        "changed_files": ["src/webhooks/stripe.ts"],
+        "diff_summary": "added early return",
+        "failure": "guest_identity is still null"
+      },
+      "current_attempt": {
+        "hypothesis": "Need a different null check",
+        "approach": "Add if !user: return",
+        "changed_files": ["src/webhooks/stripe.ts"],
+        "diff_summary": "moved the early return one line",
+        "failure": "guest_identity is still null"
+      }
+    },
+    "mock_answers": {
+      "same_failure": 0.94,
+      "same_strategy": 0.91,
+      "meaningful_new_evidence": 0.12,
+      "meaningful_progress": 0.18,
+      "reconsider_approach": 0.93
+    },
+    "expected": {
+      "signals": {
+        "same_failure": {"direction": "HIGH", "min": 0.85},
+        "same_strategy": {"direction": "HIGH", "min": 0.80},
+        "meaningful_progress": {"direction": "LOW", "max": 0.30}
+      },
+      "uncertain_expected": false,
+      "notes": "Repeated unsuccessful strategy."
+    }
+  },
+  {
+    "id": "progress-new-evidence",
+    "tool": "jev_compare_attempts",
+    "input": {
+      "task_goal": "Fix null guest identity",
+      "previous_attempt": {
+        "hypothesis": "Webhook payload missing userId",
+        "approach": "Log payload keys",
+        "changed_files": ["src/webhooks/stripe.ts"],
+        "diff_summary": "added logging",
+        "failure": "still null, but logs show customer id present"
+      },
+      "current_attempt": {
+        "hypothesis": "Need to resolve customer id to user",
+        "approach": "Lookup user by stripe customer id",
+        "changed_files": ["src/webhooks/stripe.ts", "src/users/lookup.ts"],
+        "diff_summary": "added customer-id lookup",
+        "failure": "lookup returns 404 for brand-new guests"
+      }
+    },
+    "mock_answers": {
+      "same_failure": 0.21,
+      "same_strategy": 0.18,
+      "meaningful_new_evidence": 0.88,
+      "meaningful_progress": 0.81,
+      "reconsider_approach": 0.22
+    },
+    "expected": {
+      "signals": {
+        "meaningful_progress": {"direction": "HIGH", "min": 0.70},
+        "same_strategy": {"direction": "LOW", "max": 0.30}
+      },
+      "uncertain_expected": false,
+      "notes": "New evidence and a different approach."
+    }
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "jev": {
+      "command": "jev-mcp",
+      "args": ["--profile", "interactive", "--shadow"],
+      "env": {
+        "TYPESAFE_API_KEY": "${TYPESAFE_API_KEY}",
+        "TYPESAFE_MODEL": "jev-latest",
+        "JEV_MCP_PROFILE": "interactive",
+        "JEV_MCP_SHADOW_MODE": "true"
+      }
+    }
+  }
+}

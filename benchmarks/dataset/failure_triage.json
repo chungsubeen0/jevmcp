@@ -1,0 +1,113 @@
+[
+  {
+    "id": "triage-local-related",
+    "tool": "jev_triage_failure",
+    "input": {
+      "task": {
+        "goal": "Implement guest checkout",
+        "requirements": [
+          {
+            "id": "R14",
+            "text": "Guest order must resolve a canonical user"
+          }
+        ]
+      },
+      "current_step": "Implement webhook identity resolution",
+      "failure": {
+        "command": "pnpm test",
+        "exit_code": 1,
+        "summary": "guest_identity expected UUID but received null",
+        "output": "FAIL src/webhooks/stripe.test.ts\n  guest_identity expected UUID but received null"
+      },
+      "changed_files": ["src/webhooks/stripe.ts"],
+      "diff_summary": "resolveGuest now returns null when metadata.userId is missing"
+    },
+    "mock_answers": {
+      "related_to_current_change": 0.97,
+      "likely_localized": 0.89,
+      "likely_preexisting": 0.04,
+      "requirement_related": 0.94,
+      "same_as_previous_failure": 0.10,
+      "needs_deeper_reasoning": 0.22
+    },
+    "expected": {
+      "signals": {
+        "related_to_current_change": {"direction": "HIGH", "min": 0.70},
+        "likely_localized": {"direction": "HIGH", "min": 0.70},
+        "likely_preexisting": {"direction": "LOW", "max": 0.30}
+      },
+      "uncertain_expected": false,
+      "notes": "Obvious local regression in the file just edited."
+    }
+  },
+  {
+    "id": "triage-preexisting-unrelated",
+    "tool": "jev_triage_failure",
+    "input": {
+      "task": {
+        "goal": "Rename checkout button label",
+        "requirements": []
+      },
+      "current_step": "Update button copy",
+      "failure": {
+        "command": "pnpm test",
+        "exit_code": 1,
+        "summary": "flaky network timeout in billing provider sandbox",
+        "output": "Error: ETIMEDOUT connecting to sandbox.payments.example"
+      },
+      "changed_files": ["src/ui/Button.tsx"],
+      "diff_summary": "label: Pay now -> Place order"
+    },
+    "mock_answers": {
+      "related_to_current_change": 0.08,
+      "likely_localized": 0.12,
+      "likely_preexisting": 0.88,
+      "requirement_related": 0.05,
+      "same_as_previous_failure": 0.20,
+      "needs_deeper_reasoning": 0.41
+    },
+    "expected": {
+      "signals": {
+        "related_to_current_change": {"direction": "LOW", "max": 0.30},
+        "likely_preexisting": {"direction": "HIGH", "min": 0.70}
+      },
+      "uncertain_expected": false,
+      "notes": "Copy change vs unrelated network flake."
+    }
+  },
+  {
+    "id": "triage-ambiguous",
+    "tool": "jev_triage_failure",
+    "input": {
+      "task": {
+        "goal": "Fix checkout",
+        "requirements": []
+      },
+      "current_step": "Unknown",
+      "failure": {
+        "command": "pytest",
+        "exit_code": 1,
+        "summary": "AssertionError",
+        "output": "AssertionError"
+      },
+      "changed_files": [],
+      "diff_summary": ""
+    },
+    "mock_answers": {
+      "related_to_current_change": 0.50,
+      "likely_localized": 0.48,
+      "likely_preexisting": 0.51,
+      "requirement_related": 0.44,
+      "same_as_previous_failure": 0.50,
+      "needs_deeper_reasoning": 0.78
+    },
+    "expected": {
+      "signals": {
+        "related_to_current_change": {"direction": "UNCERTAIN"},
+        "needs_deeper_reasoning": {"direction": "HIGH", "min": 0.70}
+      },
+      "uncertain_expected": true,
+      "notes": "Insufficient evidence. Ambiguity is the correct outcome."
+    }
+  }
+]

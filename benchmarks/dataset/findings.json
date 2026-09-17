@@ -1,0 +1,35 @@
+[
+  {
+    "id": "finding-duplicate-style",
+    "tool": "jev_classify_findings",
+    "input": {
+      "task_goal": "Review checkout PR",
+      "requirements": [{"id": "R1", "text": "Resolve guest user"}],
+      "findings": [
+        {"id": "F1", "source": "lint", "text": "Missing trailing newline"},
+        {"id": "F2", "source": "human", "text": "Guest path never writes user id"}
+      ]
+    },
+    "mock_answers": {
+      "F1::likely_valid": 0.90,
+      "F1::requirement_related": 0.05,
+      "F1::requires_code_change": 0.70,
+      "F1::requires_replan": 0.04,
+      "F1::likely_duplicate": 0.10,
+      "F1::security_relevant": 0.02,
+      "F1::data_integrity_relevant": 0.02,
+      "F2::likely_valid": 0.88,
+      "F2::requirement_related": 0.93,
+      "F2::requires_code_change": 0.91,
+      "F2::requires_replan": 0.20,
+      "F2::likely_duplicate": 0.08,
+      "F2::security_relevant": 0.15,
+      "F2::data_integrity_relevant": 0.84
+    },
+    "expected": {
+      "signals": {},
+      "uncertain_expected": false,
+      "notes": "Style vs requirement-linked data integrity finding."
+    }
+  }
+]

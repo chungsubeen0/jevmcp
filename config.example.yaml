@@ -1,0 +1,50 @@
+# Example Jev MCP configuration. Copy to jev-mcp.yaml or ~/.config/jev-mcp/config.yaml.
+# Project YAML cannot set api_key, base_url, or telemetry.store_content.
+# Use TYPESAFE_API_KEY and optional TYPESAFE_BASE_URL in the environment.
+
+server:
+  log_level: INFO
+  shadow_mode: true
+
+provider:
+  name: typesafe
+  model: jev-latest
+  timeout_seconds: 30
+  max_retries: 1
+
+profile:
+  default: interactive
+
+limits:
+  max_state_chars: 100000
+  max_question_count: 100
+  max_question_chars: 2000
+  max_candidates: 25
+  max_candidate_chars: 8000
+  max_findings: 50
+  max_requirements: 50
+
+thresholds:
+  default:
+    low: 0.30
+    high: 0.70
+  stuck:
+    same_failure: 0.85
+    same_strategy: 0.80
+    max_new_evidence: 0.30
+    max_progress: 0.30
+
+cache:
+  enabled: true
+  backend: sqlite
+  ttl_seconds: 3600
+  max_entries: 10000
+
+telemetry:
+  enabled: true
+  store_content: false
+  store_hashes: true
+  local_only: true
+
+cost:
+  jev_input_per_million: null

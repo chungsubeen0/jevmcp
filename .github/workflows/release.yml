@@ -1,0 +1,25 @@
+name: release-gates
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests scripts evals
+      - run: pytest -m "not live and not typesafe and not eval_live"
+      - name: Provider smoke
+        env:
+          JEV_MCP_LIVE: "1"
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+        run: pytest -m "live and typesafe"
+      - run: python scripts/eval.py --out eval-results/${{ github.ref_name }}/software.json
+      - run: python scripts/doctor.py

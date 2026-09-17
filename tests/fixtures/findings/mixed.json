@@ -1,0 +1,4 @@
+[
+  {"id": "F1", "source": "lint", "text": "Missing trailing newline"},
+  {"id": "F2", "source": "human", "text": "Guest path never writes user id"}
+]

@@ -1,0 +1,31 @@
+[
+  {
+    "id": "risk-auth-payment",
+    "tool": "jev_assess_risk",
+    "input": {
+      "task_goal": "Change checkout identity and Stripe webhook",
+      "changed_files": ["src/auth.ts", "src/webhooks/stripe.ts"],
+      "diff_summary": "webhook now trusts client-supplied user id; payment capture moved earlier",
+      "requirements": [{"id": "R9", "text": "Only charge after identity is resolved"}]
+    },
+    "mock_answers": {
+      "security_sensitive": 0.91,
+      "authentication_sensitive": 0.96,
+      "authorization_sensitive": 0.80,
+      "data_integrity_sensitive": 0.72,
+      "schema_sensitive": 0.10,
+      "public_api_sensitive": 0.40,
+      "architecture_sensitive": 0.21,
+      "payment_sensitive": 0.84,
+      "broad_regression_risk": 0.55
+    },
+    "expected": {
+      "signals": {
+        "authentication_sensitive": {"direction": "HIGH", "min": 0.70},
+        "payment_sensitive": {"direction": "HIGH", "min": 0.70}
+      },
+      "uncertain_expected": false,
+      "notes": "Triage only. Not a security conclusion."
+    }
+  }
+]

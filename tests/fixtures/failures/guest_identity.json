@@ -1,0 +1,6 @@
+{
+  "command": "pnpm test",
+  "exit_code": 1,
+  "summary": "guest_identity expected UUID but received null",
+  "output": "FAIL src/webhooks/stripe.test.ts"
+}
