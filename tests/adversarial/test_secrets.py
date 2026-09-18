@@ -6,6 +6,7 @@ from jev_mcp.providers.mock import MockJudgmentProvider
 from jev_mcp.telemetry.privacy import redact_text
 from jev_mcp.tools.judge import run_judge
 
+
 def _fixture(*parts: str) -> str:
     """Assemble fake leak strings at runtime so scanners do not treat fixtures as live secrets."""
     return "".join(parts)
