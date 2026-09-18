@@ -225,3 +225,4 @@ __marimo__/
 *.sqlite-shm
 *.db
 .DS_Store
+eval-results/
