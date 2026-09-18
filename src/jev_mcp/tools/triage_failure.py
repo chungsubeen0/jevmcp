@@ -14,16 +14,17 @@ from jev_mcp.normalization.diffs import normalize_diff
 from jev_mcp.normalization.failures import normalize_failure_output
 from jev_mcp.normalization.requirements import normalize_requirement_text
 from jev_mcp.normalization.text import normalize_text
-from jev_mcp.policy.decisions import triage_classification
-from jev_mcp.tools._common import char_count, client_or_default, engine_profile
+from jev_mcp.policy.decisions import triage_classification, triage_user_decision
+from jev_mcp.tools._common import char_count, client_or_default, engine_profile, require_predefined_goal
 from jev_mcp.util.limits import LimitReport, enforce_count
 
 TOOL_NAME = "jev_triage_failure"
 TOOL_VERSION = "1.0.0"
 DESCRIPTION = (
-    "Cheap probabilistic triage for test/build/lint/typecheck failures. "
-    "Use before broad reasoning when the relationship or scope of a failure is unclear. "
-    "Returns structured likelihood signals; does not diagnose or fix the problem."
+    "Help the user decide the next implementation attempt toward a predefined goal "
+    "after a failure. Cheap triage for test/build/lint/typecheck failures. Use before "
+    "broad reasoning when scope is unclear. Returns likelihoods and user_decision. "
+    "Does not diagnose or fix."
 )
 
 QUESTIONS = [
@@ -87,6 +88,7 @@ async def run_triage_failure(
     use_cache: bool = True,
 ) -> dict[str, Any]:
     task_model = TaskInput.model_validate(task)
+    task_model.goal = require_predefined_goal(task_model.goal)
     failure_model = FailureEvent.model_validate(failure)
     previous = PreviousFailure.model_validate(previous_failure) if previous_failure else None
     client_meta = client_or_default(client)
@@ -145,6 +147,7 @@ async def run_triage_failure(
         {
             "signals": result.answers,
             "classification": classification,
+            "user_decision": triage_user_decision(classification),
             "meta": engine.meta(result, cached=cached, request_id=request_id, tool=TOOL_NAME),
         },
         warnings=report.warnings + req_warnings,

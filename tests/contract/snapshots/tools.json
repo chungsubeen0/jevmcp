@@ -1,21 +1,15 @@
 {
-  "jev_assess_risk": {
-    "description": "Cheap change-risk triage to decide whether a more expensive frontier review appears warranted. Returns sensitivity likelihoods only. These are not security conclusions and do not certify safety.",
+  "jev_triage_failure": {
+    "name": "jev_triage_failure",
+    "description": "Help the user decide the next implementation attempt toward a predefined goal after a failure. Cheap triage for test/build/lint/typecheck failures. Use before broad reasoning when scope is unclear. Returns likelihoods and user_decision. Does not diagnose or fix.",
     "inputSchema": {
       "$defs": {
         "ClientMeta": {
           "properties": {
-            "client_version": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Client Version"
+            "name": {
+              "default": "unknown",
+              "title": "Name",
+              "type": "string"
             },
             "mode": {
               "anyOf": [
@@ -46,10 +40,17 @@
               "default": null,
               "title": "Model"
             },
-            "name": {
-              "default": "unknown",
-              "title": "Name",
-              "type": "string"
+            "client_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Client Version"
             },
             "session_id": {
               "anyOf": [
@@ -79,6 +80,64 @@
           "title": "ClientMeta",
           "type": "object"
         },
+        "FailureEvent": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "default": "",
+              "title": "Command",
+              "type": "string"
+            },
+            "exit_code": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Exit Code"
+            },
+            "summary": {
+              "default": "",
+              "title": "Summary",
+              "type": "string"
+            },
+            "output": {
+              "default": "",
+              "title": "Output",
+              "type": "string"
+            }
+          },
+          "title": "FailureEvent",
+          "type": "object"
+        },
+        "PreviousFailure": {
+          "additionalProperties": false,
+          "properties": {
+            "summary": {
+              "default": "",
+              "title": "Summary",
+              "type": "string"
+            },
+            "output": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Output"
+            }
+          },
+          "title": "PreviousFailure",
+          "type": "object"
+        },
         "Requirement": {
           "additionalProperties": false,
           "properties": {
@@ -97,9 +156,40 @@
           ],
           "title": "Requirement",
           "type": "object"
+        },
+        "TaskInput": {
+          "additionalProperties": false,
+          "properties": {
+            "goal": {
+              "title": "Goal",
+              "type": "string"
+            },
+            "requirements": {
+              "items": {
+                "$ref": "#/$defs/Requirement"
+              },
+              "title": "Requirements",
+              "type": "array"
+            }
+          },
+          "required": [
+            "goal"
+          ],
+          "title": "TaskInput",
+          "type": "object"
         }
       },
       "properties": {
+        "task": {
+          "$ref": "#/$defs/TaskInput"
+        },
+        "current_step": {
+          "title": "Current Step",
+          "type": "string"
+        },
+        "failure": {
+          "$ref": "#/$defs/FailureEvent"
+        },
         "changed_files": {
           "anyOf": [
             {
@@ -115,6 +205,22 @@
           "default": null,
           "title": "Changed Files"
         },
+        "diff_summary": {
+          "default": "",
+          "title": "Diff Summary",
+          "type": "string"
+        },
+        "previous_failure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreviousFailure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "client": {
           "anyOf": [
             {
@@ -126,30 +232,6 @@
           ],
           "default": null
         },
-        "diff_summary": {
-          "default": "",
-          "title": "Diff Summary",
-          "type": "string"
-        },
-        "requirements": {
-          "anyOf": [
-            {
-              "items": {
-                "$ref": "#/$defs/Requirement"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Requirements"
-        },
-        "task_goal": {
-          "title": "Task Goal",
-          "type": "string"
-        },
         "use_cache": {
           "default": true,
           "title": "Use Cache",
@@ -157,30 +239,59 @@
         }
       },
       "required": [
-        "task_goal"
+        "task",
+        "current_step",
+        "failure"
       ],
-      "title": "jev_assess_riskArguments",
+      "title": "jev_triage_failureArguments",
       "type": "object"
-    },
-    "name": "jev_assess_risk"
+    }
   },
-  "jev_check_completion": {
-    "description": "Cheap requirement/evidence coverage check before an expensive full-task review. Use on large tasks with explicit requirements. Returns per-requirement likelihoods and which items warrant review. Never certifies correctness, safety, or merge readiness.",
+  "jev_compare_attempts": {
+    "name": "jev_compare_attempts",
+    "description": "Help the user decide the next implementation attempt toward a predefined goal. Compare two unsuccessful attempts. Returns stuck/progress signals, an advisory control signal, and user_decision text. Does not write the next fix or change the goal.",
     "inputSchema": {
       "$defs": {
+        "Attempt": {
+          "additionalProperties": false,
+          "properties": {
+            "hypothesis": {
+              "default": "",
+              "title": "Hypothesis",
+              "type": "string"
+            },
+            "approach": {
+              "default": "",
+              "title": "Approach",
+              "type": "string"
+            },
+            "changed_files": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Changed Files",
+              "type": "array"
+            },
+            "diff_summary": {
+              "default": "",
+              "title": "Diff Summary",
+              "type": "string"
+            },
+            "failure": {
+              "default": "",
+              "title": "Failure",
+              "type": "string"
+            }
+          },
+          "title": "Attempt",
+          "type": "object"
+        },
         "ClientMeta": {
           "properties": {
-            "client_version": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Client Version"
+            "name": {
+              "default": "unknown",
+              "title": "Name",
+              "type": "string"
             },
             "mode": {
               "anyOf": [
@@ -211,10 +322,136 @@
               "default": null,
               "title": "Model"
             },
+            "client_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Client Version"
+            },
+            "session_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Session Id"
+            },
+            "task_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Task Id"
+            }
+          },
+          "title": "ClientMeta",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "task_goal": {
+          "title": "Task Goal",
+          "type": "string"
+        },
+        "previous_attempt": {
+          "$ref": "#/$defs/Attempt"
+        },
+        "current_attempt": {
+          "$ref": "#/$defs/Attempt"
+        },
+        "client": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClientMeta"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "use_cache": {
+          "default": true,
+          "title": "Use Cache",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "task_goal",
+        "previous_attempt",
+        "current_attempt"
+      ],
+      "title": "jev_compare_attemptsArguments",
+      "type": "object"
+    }
+  },
+  "jev_check_completion": {
+    "name": "jev_check_completion",
+    "description": "Help the user decide whether the current attempt reached a predefined goal. Cheap requirement/evidence coverage check before an expensive full-task review. Returns per-requirement likelihoods, review list, and user_decision. Never certifies correctness, safety, or merge readiness.",
+    "inputSchema": {
+      "$defs": {
+        "ClientMeta": {
+          "properties": {
             "name": {
               "default": "unknown",
               "title": "Name",
               "type": "string"
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "autonomous",
+                    "interactive",
+                    "custom"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": "interactive",
+              "title": "Mode"
+            },
+            "model": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Model"
+            },
+            "client_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Client Version"
             },
             "session_id": {
               "anyOf": [
@@ -306,9 +543,19 @@
         "VerificationInput": {
           "additionalProperties": false,
           "properties": {
+            "tests": {
+              "default": "",
+              "title": "Tests",
+              "type": "string"
+            },
             "lint": {
               "default": "",
               "title": "Lint",
+              "type": "string"
+            },
+            "typecheck": {
+              "default": "",
+              "title": "Typecheck",
               "type": "string"
             },
             "other": {
@@ -317,16 +564,6 @@
               },
               "title": "Other",
               "type": "array"
-            },
-            "tests": {
-              "default": "",
-              "title": "Tests",
-              "type": "string"
-            },
-            "typecheck": {
-              "default": "",
-              "title": "Typecheck",
-              "type": "string"
             }
           },
           "title": "VerificationInput",
@@ -334,27 +571,11 @@
         }
       },
       "properties": {
-        "client": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ClientMeta"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "implementation": {
-          "$ref": "#/$defs/ImplementationInput"
-        },
         "task": {
           "$ref": "#/$defs/TaskInput"
         },
-        "use_cache": {
-          "default": true,
-          "title": "Use Cache",
-          "type": "boolean"
+        "implementation": {
+          "$ref": "#/$defs/ImplementationInput"
         },
         "verification": {
           "anyOf": [
@@ -366,6 +587,22 @@
             }
           ],
           "default": null
+        },
+        "client": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClientMeta"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "use_cache": {
+          "default": true,
+          "title": "Use Cache",
+          "type": "boolean"
         }
       },
       "required": [
@@ -374,26 +611,19 @@
       ],
       "title": "jev_check_completionArguments",
       "type": "object"
-    },
-    "name": "jev_check_completion"
+    }
   },
-  "jev_classify_findings": {
-    "description": "Cheap normalization of review findings from tests, linters, humans, or frontier reviewers. Use to triage a large finding set before expensive reasoning. Returns likelihood signals only. Does not confirm that a vulnerability or defect exists.",
+  "jev_rank_context": {
+    "name": "jev_rank_context",
+    "description": "Help the user decide what to inspect next toward a predefined goal. Cheap ranking of repository context candidates before deeper frontier inspection. Ranks only; never deletes or permanently excludes candidates.",
     "inputSchema": {
       "$defs": {
         "ClientMeta": {
           "properties": {
-            "client_version": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Client Version"
+            "name": {
+              "default": "unknown",
+              "title": "Name",
+              "type": "string"
             },
             "mode": {
               "anyOf": [
@@ -424,10 +654,184 @@
               "default": null,
               "title": "Model"
             },
+            "client_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Client Version"
+            },
+            "session_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Session Id"
+            },
+            "task_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Task Id"
+            }
+          },
+          "title": "ClientMeta",
+          "type": "object"
+        },
+        "ContextCandidate": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "path": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Path"
+            },
+            "symbol": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Symbol"
+            },
+            "content": {
+              "default": "",
+              "title": "Content",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "title": "ContextCandidate",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "task_goal": {
+          "title": "Task Goal",
+          "type": "string"
+        },
+        "current_step": {
+          "title": "Current Step",
+          "type": "string"
+        },
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/ContextCandidate"
+          },
+          "title": "Candidates",
+          "type": "array"
+        },
+        "client": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClientMeta"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "use_cache": {
+          "default": true,
+          "title": "Use Cache",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "task_goal",
+        "current_step",
+        "candidates"
+      ],
+      "title": "jev_rank_contextArguments",
+      "type": "object"
+    }
+  },
+  "jev_classify_findings": {
+    "name": "jev_classify_findings",
+    "description": "Help the user decide which findings to act on in the next attempt toward a predefined goal. Cheap normalization of review findings. Returns likelihoods and user_decision. Does not confirm that a vulnerability or defect exists.",
+    "inputSchema": {
+      "$defs": {
+        "ClientMeta": {
+          "properties": {
             "name": {
               "default": "unknown",
               "title": "Name",
               "type": "string"
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "autonomous",
+                    "interactive",
+                    "custom"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "default": "interactive",
+              "title": "Mode"
+            },
+            "model": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Model"
+            },
+            "client_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Client Version"
             },
             "session_id": {
               "anyOf": [
@@ -464,6 +868,10 @@
               "title": "Id",
               "type": "string"
             },
+            "text": {
+              "title": "Text",
+              "type": "string"
+            },
             "source": {
               "anyOf": [
                 {
@@ -475,10 +883,6 @@
               ],
               "default": null,
               "title": "Source"
-            },
-            "text": {
-              "title": "Text",
-              "type": "string"
             }
           },
           "required": [
@@ -509,16 +913,9 @@
         }
       },
       "properties": {
-        "client": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ClientMeta"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+        "task_goal": {
+          "title": "Task Goal",
+          "type": "string"
         },
         "findings": {
           "items": {
@@ -542,9 +939,16 @@
           "default": null,
           "title": "Requirements"
         },
-        "task_goal": {
-          "title": "Task Goal",
-          "type": "string"
+        "client": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClientMeta"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "use_cache": {
           "default": true,
@@ -558,60 +962,19 @@
       ],
       "title": "jev_classify_findingsArguments",
       "type": "object"
-    },
-    "name": "jev_classify_findings"
+    }
   },
-  "jev_compare_attempts": {
-    "description": "Cheap comparison of two unsuccessful implementation attempts. Use when repeated work may be spending frontier inference on the same failed strategy. Returns stuck/progress signals and an advisory control signal; does not choose the next fix.",
+  "jev_assess_risk": {
+    "name": "jev_assess_risk",
+    "description": "Help the user decide whether a deeper review is warranted before the next attempt toward a predefined goal. Cheap change-risk triage. Returns sensitivity likelihoods and user_decision. Not a security conclusion and does not certify safety.",
     "inputSchema": {
       "$defs": {
-        "Attempt": {
-          "additionalProperties": false,
-          "properties": {
-            "approach": {
-              "default": "",
-              "title": "Approach",
-              "type": "string"
-            },
-            "changed_files": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Changed Files",
-              "type": "array"
-            },
-            "diff_summary": {
-              "default": "",
-              "title": "Diff Summary",
-              "type": "string"
-            },
-            "failure": {
-              "default": "",
-              "title": "Failure",
-              "type": "string"
-            },
-            "hypothesis": {
-              "default": "",
-              "title": "Hypothesis",
-              "type": "string"
-            }
-          },
-          "title": "Attempt",
-          "type": "object"
-        },
         "ClientMeta": {
           "properties": {
-            "client_version": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Client Version"
+            "name": {
+              "default": "unknown",
+              "title": "Name",
+              "type": "string"
             },
             "mode": {
               "anyOf": [
@@ -642,10 +1005,17 @@
               "default": null,
               "title": "Model"
             },
-            "name": {
-              "default": "unknown",
-              "title": "Name",
-              "type": "string"
+            "client_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Client Version"
             },
             "session_id": {
               "anyOf": [
@@ -674,9 +1044,67 @@
           },
           "title": "ClientMeta",
           "type": "object"
+        },
+        "Requirement": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "text": {
+              "title": "Text",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "text"
+          ],
+          "title": "Requirement",
+          "type": "object"
         }
       },
       "properties": {
+        "task_goal": {
+          "title": "Task Goal",
+          "type": "string"
+        },
+        "changed_files": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Changed Files"
+        },
+        "diff_summary": {
+          "default": "",
+          "title": "Diff Summary",
+          "type": "string"
+        },
+        "requirements": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Requirement"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requirements"
+        },
         "client": {
           "anyOf": [
             {
@@ -688,16 +1116,6 @@
           ],
           "default": null
         },
-        "current_attempt": {
-          "$ref": "#/$defs/Attempt"
-        },
-        "previous_attempt": {
-          "$ref": "#/$defs/Attempt"
-        },
-        "task_goal": {
-          "title": "Task Goal",
-          "type": "string"
-        },
         "use_cache": {
           "default": true,
           "title": "Use Cache",
@@ -705,32 +1123,23 @@
         }
       },
       "required": [
-        "task_goal",
-        "previous_attempt",
-        "current_attempt"
+        "task_goal"
       ],
-      "title": "jev_compare_attemptsArguments",
+      "title": "jev_assess_riskArguments",
       "type": "object"
-    },
-    "name": "jev_compare_attempts"
+    }
   },
   "jev_judge": {
-    "description": "Generic bounded judgment primitive. Ask one evidence-grounded yes/no proposition per question and receive calibrated probabilities. Rejects generative requests such as writing code, designing architecture, or fixing bugs. Jev evaluates supplied evidence; it does not invent it.",
+    "name": "jev_judge",
+    "description": "Generic bounded judgment primitive. During implementation, ask one evidence-grounded yes/no proposition about progress toward a predefined goal so the user can decide the next attempt. Rejects generative requests and product/planning decisions (code, architecture, roadmaps, market/pricing choices). Does not invent a plan or write the work.",
     "inputSchema": {
       "$defs": {
         "ClientMeta": {
           "properties": {
-            "client_version": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Client Version"
+            "name": {
+              "default": "unknown",
+              "title": "Name",
+              "type": "string"
             },
             "mode": {
               "anyOf": [
@@ -761,10 +1170,17 @@
               "default": null,
               "title": "Model"
             },
-            "name": {
-              "default": "unknown",
-              "title": "Name",
-              "type": "string"
+            "client_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Client Version"
             },
             "session_id": {
               "anyOf": [
@@ -815,6 +1231,18 @@
         }
       },
       "properties": {
+        "state": {
+          "additionalProperties": true,
+          "title": "State",
+          "type": "object"
+        },
+        "questions": {
+          "items": {
+            "$ref": "#/$defs/JudgeQuestion"
+          },
+          "title": "Questions",
+          "type": "array"
+        },
         "client": {
           "anyOf": [
             {
@@ -825,18 +1253,6 @@
             }
           ],
           "default": null
-        },
-        "questions": {
-          "items": {
-            "$ref": "#/$defs/JudgeQuestion"
-          },
-          "title": "Questions",
-          "type": "array"
-        },
-        "state": {
-          "additionalProperties": true,
-          "title": "State",
-          "type": "object"
         },
         "use_cache": {
           "default": true,
@@ -850,422 +1266,6 @@
       ],
       "title": "jev_judgeArguments",
       "type": "object"
-    },
-    "name": "jev_judge"
-  },
-  "jev_rank_context": {
-    "description": "Cheap ranking of repository context candidates before deeper frontier inspection. Use when discovery produced many plausible files or symbols. Ranks only; never deletes or permanently excludes candidates.",
-    "inputSchema": {
-      "$defs": {
-        "ClientMeta": {
-          "properties": {
-            "client_version": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Client Version"
-            },
-            "mode": {
-              "anyOf": [
-                {
-                  "enum": [
-                    "autonomous",
-                    "interactive",
-                    "custom"
-                  ],
-                  "type": "string"
-                },
-                {
-                  "type": "string"
-                }
-              ],
-              "default": "interactive",
-              "title": "Mode"
-            },
-            "model": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Model"
-            },
-            "name": {
-              "default": "unknown",
-              "title": "Name",
-              "type": "string"
-            },
-            "session_id": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Session Id"
-            },
-            "task_id": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Task Id"
-            }
-          },
-          "title": "ClientMeta",
-          "type": "object"
-        },
-        "ContextCandidate": {
-          "additionalProperties": false,
-          "properties": {
-            "content": {
-              "default": "",
-              "title": "Content",
-              "type": "string"
-            },
-            "id": {
-              "title": "Id",
-              "type": "string"
-            },
-            "path": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Path"
-            },
-            "symbol": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Symbol"
-            }
-          },
-          "required": [
-            "id"
-          ],
-          "title": "ContextCandidate",
-          "type": "object"
-        }
-      },
-      "properties": {
-        "candidates": {
-          "items": {
-            "$ref": "#/$defs/ContextCandidate"
-          },
-          "title": "Candidates",
-          "type": "array"
-        },
-        "client": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ClientMeta"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "current_step": {
-          "title": "Current Step",
-          "type": "string"
-        },
-        "task_goal": {
-          "title": "Task Goal",
-          "type": "string"
-        },
-        "use_cache": {
-          "default": true,
-          "title": "Use Cache",
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "task_goal",
-        "current_step",
-        "candidates"
-      ],
-      "title": "jev_rank_contextArguments",
-      "type": "object"
-    },
-    "name": "jev_rank_context"
-  },
-  "jev_triage_failure": {
-    "description": "Cheap probabilistic triage for test/build/lint/typecheck failures. Use before broad reasoning when the relationship or scope of a failure is unclear. Returns structured likelihood signals; does not diagnose or fix the problem.",
-    "inputSchema": {
-      "$defs": {
-        "ClientMeta": {
-          "properties": {
-            "client_version": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Client Version"
-            },
-            "mode": {
-              "anyOf": [
-                {
-                  "enum": [
-                    "autonomous",
-                    "interactive",
-                    "custom"
-                  ],
-                  "type": "string"
-                },
-                {
-                  "type": "string"
-                }
-              ],
-              "default": "interactive",
-              "title": "Mode"
-            },
-            "model": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Model"
-            },
-            "name": {
-              "default": "unknown",
-              "title": "Name",
-              "type": "string"
-            },
-            "session_id": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Session Id"
-            },
-            "task_id": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Task Id"
-            }
-          },
-          "title": "ClientMeta",
-          "type": "object"
-        },
-        "FailureEvent": {
-          "additionalProperties": false,
-          "properties": {
-            "command": {
-              "default": "",
-              "title": "Command",
-              "type": "string"
-            },
-            "exit_code": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Exit Code"
-            },
-            "output": {
-              "default": "",
-              "title": "Output",
-              "type": "string"
-            },
-            "summary": {
-              "default": "",
-              "title": "Summary",
-              "type": "string"
-            }
-          },
-          "title": "FailureEvent",
-          "type": "object"
-        },
-        "PreviousFailure": {
-          "additionalProperties": false,
-          "properties": {
-            "output": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Output"
-            },
-            "summary": {
-              "default": "",
-              "title": "Summary",
-              "type": "string"
-            }
-          },
-          "title": "PreviousFailure",
-          "type": "object"
-        },
-        "Requirement": {
-          "additionalProperties": false,
-          "properties": {
-            "id": {
-              "title": "Id",
-              "type": "string"
-            },
-            "text": {
-              "title": "Text",
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "text"
-          ],
-          "title": "Requirement",
-          "type": "object"
-        },
-        "TaskInput": {
-          "additionalProperties": false,
-          "properties": {
-            "goal": {
-              "title": "Goal",
-              "type": "string"
-            },
-            "requirements": {
-              "items": {
-                "$ref": "#/$defs/Requirement"
-              },
-              "title": "Requirements",
-              "type": "array"
-            }
-          },
-          "required": [
-            "goal"
-          ],
-          "title": "TaskInput",
-          "type": "object"
-        }
-      },
-      "properties": {
-        "changed_files": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Changed Files"
-        },
-        "client": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ClientMeta"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "current_step": {
-          "title": "Current Step",
-          "type": "string"
-        },
-        "diff_summary": {
-          "default": "",
-          "title": "Diff Summary",
-          "type": "string"
-        },
-        "failure": {
-          "$ref": "#/$defs/FailureEvent"
-        },
-        "previous_failure": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PreviousFailure"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "task": {
-          "$ref": "#/$defs/TaskInput"
-        },
-        "use_cache": {
-          "default": true,
-          "title": "Use Cache",
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "task",
-        "current_step",
-        "failure"
-      ],
-      "title": "jev_triage_failureArguments",
-      "type": "object"
-    },
-    "name": "jev_triage_failure"
+    }
   }
 }

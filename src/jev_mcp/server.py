@@ -1,4 +1,4 @@
-"""MCP stdio server. TypeSafe is not contacted at startup."""
+"""MCP server. stdio by default; optional Streamable HTTP. TypeSafe is not contacted at startup."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from typing import Any
 from jev_mcp import __version__
 from jev_mcp.config import AppConfig, load_config
 from jev_mcp.engine import Engine
+from jev_mcp.http_auth import BearerGate, assert_http_ready, is_loopback
 from jev_mcp.models import (
     Attempt,
     ClientMeta,
@@ -46,6 +47,7 @@ except ImportError:  # mcp >= 2
     from mcp.server import MCPServer as FastMCP
 
 _ENGINE: Engine | None = None
+_HEALTH_REGISTERED = False
 mcp = FastMCP("jev-mcp")
 
 
@@ -227,6 +229,78 @@ async def jev_judge(
     )
 
 
+def _register_health_route() -> None:
+    global _HEALTH_REGISTERED
+    if _HEALTH_REGISTERED:
+        return
+
+    @mcp.custom_route("/health", methods=["GET"])
+    async def health(_request):
+        from starlette.responses import JSONResponse
+
+        engine = get_engine()
+        return JSONResponse(
+            {
+                "ok": True,
+                "version": __version__,
+                "provider": engine.config.provider.name,
+                "profile": engine.config.profile.default,
+                "shadow": engine.config.server.shadow_mode,
+                "transport": engine.config.server.transport,
+            }
+        )
+
+    _HEALTH_REGISTERED = True
+
+
+def transport_security_for(host: str):
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    if is_loopback(host):
+        return TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=["127.0.0.1:*", "localhost:*", "[::1]:*"],
+            allowed_origins=["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"],
+        )
+    return TransportSecuritySettings(enable_dns_rebinding_protection=False)
+
+
+def build_http_app(config: AppConfig):
+    """Starlette app: /health public, /mcp behind optional bearer gate."""
+    _register_health_route()
+    http = config.server.http
+    mcp_app = mcp.streamable_http_app(
+        streamable_http_path=http.path,
+        host=http.host,
+        max_sessions=http.max_sessions,
+        session_idle_timeout=http.session_idle_timeout,
+        max_request_body_size=max(4_194_304, config.limits.max_state_chars * 4),
+        transport_security=transport_security_for(http.host),
+    )
+    return BearerGate(mcp_app, http.token if http.require_token else None)
+
+
+def run_http(config: AppConfig) -> None:
+    import uvicorn
+
+    assert_http_ready(config)
+    http = config.server.http
+    app = build_http_app(config)
+    logging.getLogger("jev_mcp").info(
+        "Jev MCP HTTP listening transport=streamable-http host=%s port=%s path=%s auth=%s",
+        http.host,
+        http.port,
+        http.path,
+        "token" if http.token and http.require_token else "off",
+    )
+    uvicorn.run(
+        app,
+        host=http.host,
+        port=http.port,
+        log_level=config.server.log_level.lower(),
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Jev MCP server")
     parser.add_argument("--config", help="Path to a YAML config file")
@@ -234,6 +308,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--profile", choices=["autonomous", "interactive", "custom"])
     parser.add_argument("--shadow", action="store_true", help="Enable shadow mode")
     parser.add_argument("--log-level", dest="log_level")
+    parser.add_argument("--transport", choices=["stdio", "streamable-http"])
+    parser.add_argument("--host", help="HTTP bind host (default 127.0.0.1)")
+    parser.add_argument("--port", type=int, help="HTTP bind port (default 8765)")
+    parser.add_argument("--http-path", help="Streamable HTTP path (default /mcp)")
     return parser
 
 
@@ -247,6 +325,17 @@ def config_from_args(args: argparse.Namespace) -> AppConfig:
         overrides.setdefault("server", {})["shadow_mode"] = True
     if args.log_level:
         overrides.setdefault("server", {})["log_level"] = args.log_level
+    if args.transport:
+        overrides.setdefault("server", {})["transport"] = args.transport
+    http: dict[str, Any] = {}
+    if args.host:
+        http["host"] = args.host
+    if args.port is not None:
+        http["port"] = args.port
+    if args.http_path:
+        http["path"] = args.http_path
+    if http:
+        overrides.setdefault("server", {})["http"] = http
     return load_config(config_path=args.config, cli_overrides=overrides or None)
 
 
@@ -254,6 +343,9 @@ def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     config = config_from_args(args)
     init_engine(config)
+    if config.server.transport == "streamable-http":
+        run_http(config)
+        return
     mcp.run(transport="stdio")
 
 

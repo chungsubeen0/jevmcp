@@ -20,6 +20,8 @@ def doctor_main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate Jev MCP configuration")
     parser.add_argument("--config")
     parser.add_argument("--ping", action="store_true", help="Make a tiny TypeSafe call")
+    parser.add_argument("--http", action="store_true", help="Validate Streamable HTTP bind/auth settings")
+    parser.add_argument("--http-check", action="store_true", help="GET /health on the configured HTTP bind")
     args = parser.parse_args(argv)
     config = load_config(config_path=args.config)
     data_dir = config.resolve_data_dir()
@@ -28,6 +30,7 @@ def doctor_main(argv: list[str] | None = None) -> int:
     print(f"model: {config.provider.model}")
     print(f"profile: {config.profile.default}")
     print(f"shadow_mode: {config.server.shadow_mode}")
+    print(f"transport: {config.server.transport}")
     print(f"api_key_configured: {bool(config.provider.api_key)}")
     print(f"data_dir: {data_dir}")
     print(f"cache_path: {config.cache_path()}")
@@ -41,6 +44,34 @@ def doctor_main(argv: list[str] | None = None) -> int:
     except OSError as exc:
         print(f"data_dir_writable: false ({exc})")
         return 1
+
+    if args.http or args.http_check:
+        from jev_mcp.http_auth import assert_http_ready
+
+        http = config.server.http
+        print(f"http_host: {http.host}")
+        print(f"http_port: {http.port}")
+        print(f"http_path: {http.path}")
+        print(f"http_token_configured: {bool(http.token)}")
+        print(f"http_bind_all: {http.bind_all}")
+        try:
+            assert_http_ready(config)
+            print("http_bind: ok")
+        except Exception as exc:
+            print(f"http_bind: failed ({exc})")
+            return 1
+        if args.http_check:
+            import httpx
+
+            url = f"http://{http.host}:{http.port}/health"
+            try:
+                response = httpx.get(url, timeout=2.0)
+                print(f"http_health: {response.status_code}")
+                if response.status_code != 200:
+                    return 1
+            except Exception as exc:
+                print(f"http_health: failed ({exc})")
+                return 1
 
     if not args.ping:
         print("ping: skipped (TypeSafe is not contacted unless --ping)")

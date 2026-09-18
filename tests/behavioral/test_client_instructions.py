@@ -28,3 +28,19 @@ def test_scenario_d_completion_for_large_tasks():
 def test_claude_is_less_aggressive_than_codex():
     assert "selectively" in CLAUDE.lower()
     assert "autonomous" not in CLAUDE.lower() or "interactive" in CLAUDE.lower()
+
+
+def test_instructions_keep_planning_and_coding_with_frontier():
+    for text in (CODEX, CLAUDE):
+        lower = text.lower()
+        assert "planning" in lower
+        assert "do not skip a failing test" in lower or "skip a failing test" in lower
+        assert "product" in lower
+
+
+def test_implementation_helps_user_decide_toward_predefined_goal():
+    for text in (CODEX, CLAUDE):
+        lower = text.lower()
+        assert "predefined goal" in lower
+        assert "next attempt" in lower
+        assert "user" in lower and "decide" in lower

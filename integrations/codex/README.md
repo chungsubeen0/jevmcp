@@ -6,7 +6,9 @@ Typical models: Astra, Sol, other high-capability Codex models.
 
 ## MCP config
 
-Copy `mcp-config.example.json` into your Codex MCP settings. Set `TYPESAFE_API_KEY` in the environment, not in a committed file.
+Copy `mcp-config.example.json` into your Codex MCP settings (stdio). Set `TYPESAFE_API_KEY` in the environment, not in a committed file.
+
+For a shared Streamable HTTP daemon, start `jev-mcp --transport streamable-http` and copy `mcp-config.http.example.json`. Set `JEV_MCP_HTTP_TOKEN`.
 
 Recommended first deployment:
 
@@ -29,4 +31,5 @@ Codex large-task runs should call Jev aggressively for:
 - repeated-attempt detection
 - multi-requirement completion checks
 
-Jev does not write code, run tests, or certify merges.
+Call with the user's predefined goal. Read `user_decision`. Jev helps
+choose the next attempt. It does not write code, run tests, or certify merges.

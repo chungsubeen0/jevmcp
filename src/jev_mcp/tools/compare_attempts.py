@@ -6,16 +6,16 @@ from jev_mcp.engine import Engine
 from jev_mcp.models import Attempt, ClientMeta, JudgmentQuestion
 from jev_mcp.normalization.diffs import normalize_diff
 from jev_mcp.normalization.text import normalize_text
-from jev_mcp.policy.decisions import stuck_decision
-from jev_mcp.tools._common import char_count, client_or_default, engine_profile
+from jev_mcp.policy.decisions import attempt_user_decision, stuck_decision
+from jev_mcp.tools._common import char_count, client_or_default, engine_profile, require_predefined_goal
 from jev_mcp.util.limits import LimitReport
 
 TOOL_NAME = "jev_compare_attempts"
 TOOL_VERSION = "1.0.0"
 DESCRIPTION = (
-    "Cheap comparison of two unsuccessful implementation attempts. "
-    "Use when repeated work may be spending frontier inference on the same failed strategy. "
-    "Returns stuck/progress signals and an advisory control signal; does not choose the next fix."
+    "Help the user decide the next implementation attempt toward a predefined goal. "
+    "Compare two unsuccessful attempts. Returns stuck/progress signals, an advisory "
+    "control signal, and user_decision text. Does not write the next fix or change the goal."
 )
 
 QUESTIONS = [
@@ -44,14 +44,14 @@ QUESTIONS = [
         id="meaningful_progress",
         question=(
             "Does the supplied evidence suggest the current attempt made meaningful progress "
-            "toward resolving the problem?"
+            "toward the stated task goal?"
         ),
     ),
     JudgmentQuestion(
         id="reconsider_approach",
         question=(
-            "Does the supplied evidence suggest the agent should reconsider the current "
-            "approach before making another similar edit?"
+            "Does the supplied evidence suggest the user should reconsider the current "
+            "approach before another similar attempt toward the stated task goal?"
         ),
     ),
 ]
@@ -77,6 +77,7 @@ async def run_compare_attempts(
     client: ClientMeta | dict | None = None,
     use_cache: bool = True,
 ) -> dict[str, Any]:
+    task_goal = require_predefined_goal(task_goal)
     previous = Attempt.model_validate(previous_attempt)
     current = Attempt.model_validate(current_attempt)
     client_meta = client_or_default(client)
@@ -110,6 +111,7 @@ async def run_compare_attempts(
             "signals": result.answers,
             "status": status,
             "control_signal": signal,
+            "user_decision": attempt_user_decision(status, signal),
             "meta": engine.meta(result, cached=cached, request_id=request_id, tool=TOOL_NAME),
         },
         warnings=report.warnings,

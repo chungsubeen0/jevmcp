@@ -13,16 +13,17 @@ from jev_mcp.models import (
 from jev_mcp.normalization.diffs import normalize_diff
 from jev_mcp.normalization.requirements import normalize_requirement_text
 from jev_mcp.normalization.text import normalize_text
-from jev_mcp.policy.decisions import completion_status
-from jev_mcp.tools._common import char_count, client_or_default
+from jev_mcp.policy.decisions import completion_status, completion_user_decision
+from jev_mcp.tools._common import char_count, client_or_default, require_predefined_goal
 from jev_mcp.util.limits import LimitReport, enforce_count
 
 TOOL_NAME = "jev_check_completion"
 TOOL_VERSION = "1.0.0"
 DESCRIPTION = (
+    "Help the user decide whether the current attempt reached a predefined goal. "
     "Cheap requirement/evidence coverage check before an expensive full-task review. "
-    "Use on large tasks with explicit requirements. Returns per-requirement likelihoods "
-    "and which items warrant review. Never certifies correctness, safety, or merge readiness."
+    "Returns per-requirement likelihoods, review list, and user_decision. "
+    "Never certifies correctness, safety, or merge readiness."
 )
 
 FORBIDDEN_STATUSES = {"APPROVED", "CORRECT", "SAFE_TO_MERGE", "SECURE"}
@@ -87,6 +88,7 @@ async def run_check_completion(
     use_cache: bool = True,
 ) -> dict[str, Any]:
     task_model = TaskInput.model_validate(task)
+    task_model.goal = require_predefined_goal(task_model.goal)
     impl = ImplementationInput.model_validate(implementation)
     verify = VerificationInput.model_validate(verification or {})
     client_meta = client_or_default(client)
@@ -158,6 +160,7 @@ async def run_check_completion(
             "signals": signals,
             "status": status,
             "review_requirements": review,
+            "user_decision": completion_user_decision(status),
             "meta": engine.meta(result, cached=cached, request_id=request_id, tool=TOOL_NAME),
         },
         warnings=report.warnings + req_warnings,

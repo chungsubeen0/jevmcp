@@ -46,7 +46,16 @@ async def test_descriptions_are_agent_facing():
     assert "before" in tools["jev_triage_failure"].lower()
     compare = tools["jev_compare_attempts"].lower()
     completion = tools["jev_check_completion"].lower()
-    assert "repeated" in compare or "unsuccessful" in compare
+    assert "unsuccessful" in compare or "next" in compare
     assert "never certifies" in completion or "does not" in completion
     assert "rank" in tools["jev_rank_context"].lower()
     assert "generative" in tools["jev_judge"].lower()
+    for name in (
+        "jev_triage_failure",
+        "jev_compare_attempts",
+        "jev_check_completion",
+        "jev_rank_context",
+        "jev_classify_findings",
+        "jev_assess_risk",
+    ):
+        assert "predefined goal" in tools[name].lower()

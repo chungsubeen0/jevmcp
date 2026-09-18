@@ -33,7 +33,7 @@ SECRET_PATTERNS = [
     re.compile(r"(?:postgres(?:ql)?|mysql|mongodb|redis)://[^\s'\"\\]+", re.IGNORECASE),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]+?-----END [A-Z ]*PRIVATE KEY-----"),
     re.compile(
-        r"(?:TYPESAFE_API_KEY|AWS_SECRET_ACCESS_KEY|AWS_ACCESS_KEY_ID|GH_TOKEN|GITHUB_TOKEN|NPM_TOKEN)="
+        r"(?:TYPESAFE_API_KEY|JEV_MCP_HTTP_TOKEN|AWS_SECRET_ACCESS_KEY|AWS_ACCESS_KEY_ID|GH_TOKEN|GITHUB_TOKEN|NPM_TOKEN)="
         r"[^\s]+"
     ),
 ]

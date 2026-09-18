@@ -167,7 +167,18 @@ jev-mcp --profile interactive --shadow
 python -m jev_mcp --profile autonomous --shadow
 ```
 
-This is a **stdio** server. It reads JSON-RPC on stdin and writes on stdout. Logs go to stderr. Running it in a bare terminal with no MCP client is not useful — the client must spawn the process.
+Default is **stdio**: JSON-RPC on stdin/stdout, logs on stderr. The client must spawn the process.
+
+Optional **Streamable HTTP** for a shared local daemon, Docker, or CI:
+
+```bash
+export JEV_MCP_HTTP_TOKEN=$(python -c 'import secrets; print(secrets.token_urlsafe(32))')
+jev-mcp --transport streamable-http --profile interactive --shadow
+```
+
+Listens on `127.0.0.1:8765/mcp`. Bearer token required. `/health` is public and has no secrets. Non-loopback bind needs `JEV_MCP_HTTP_BIND_ALL=1` **and** a token. Project YAML cannot set transport, host, or token.
+
+See `integrations/*/mcp-config.http.example.json`. Do not expose this port on the public internet.
 
 Default **shadow mode is on**. Results include an advisory: treat them as telemetry, not mandatory control actions. That is the recommended first deployment.
 
@@ -227,17 +238,17 @@ Optional on every call: `client` (`name`, `mode`, `model`, `session_id`, `task_i
 
 #### `jev_triage_failure`
 
-Cheap triage **before** a broad investigation of a test/build/lint/typecheck failure.
+Help the user decide the next attempt toward a predefined goal after a failure. Cheap triage **before** a broad investigation of a test/build/lint/typecheck failure. Returns `user_decision`.
 
 Signals: `related_to_current_change`, `likely_localized`, `likely_preexisting`, `requirement_related`, `same_as_previous_failure`, `needs_deeper_reasoning`.
 
 Classification: `relationship`, `scope`, `escalation`. These are labels over thresholds, not diagnoses.
 
-Does not explain the bug or propose a fix.
+Does not explain the bug or propose a fix. The user decides the next attempt. The failing check stays in scope.
 
 #### `jev_compare_attempts`
 
-Compare two unsuccessful attempts. Use after two materially similar failures.
+Help the user decide the next attempt toward a predefined goal. Compare two unsuccessful attempts. Use after two materially similar failures. Returns `user_decision`. Does not write the next fix.
 
 Signals: `same_failure`, `same_strategy`, `meaningful_new_evidence`, `meaningful_progress`, `reconsider_approach`.
 
@@ -260,7 +271,7 @@ A connection-refused failure followed by a UNIQUE violation is **progress**, not
 
 #### `jev_check_completion`
 
-Requirement/evidence coverage **before** an expensive full-task review.
+Help the user decide whether the current attempt reached the predefined goal. Requirement/evidence coverage **before** an expensive full-task review. Returns `user_decision`.
 
 Per requirement: `appears_satisfied`, `evidence_present`, `possible_gap`.
 
@@ -268,7 +279,7 @@ Global: `scope_appropriate`, `unresolved_requirement`, `further_review_warranted
 
 Statuses: `APPEARS_COMPLETE`, `REVIEW_REQUIRED`, `INCOMPLETE`.
 
-`APPEARS_COMPLETE` is **not** approval. Investigate anything in `review_requirements`.
+`APPEARS_COMPLETE` is **not** approval. Investigate anything in `review_requirements`. The user still decides whether the goal is achieved.
 
 Missed requirements (false complete) are scored 5× worse than extra escalations in the eval suite.
 
@@ -276,25 +287,25 @@ Missed requirements (false complete) are scored 5× worse than extra escalations
 
 #### `jev_rank_context`
 
-Ranks discovery candidates. **Never deletes.** Tiers: `HIGH`, `MEDIUM`, `LOW`.
+Help the user decide what to inspect next toward the predefined goal. Ranks discovery candidates. **Never deletes.** Tiers: `HIGH`, `MEDIUM`, `LOW`.
 
 Do not suppress LOW items until critical-context Recall@10 is proven ≥ 0.98 on the golden set. V1 is ranking only.
 
 #### `jev_classify_findings`
 
-Normalize findings from reviewers, linters, tests, humans. Signals include `likely_valid`, `requirement_related`, `requires_code_change`, `security_relevant`, `data_integrity_relevant`.
+Help the user decide which findings to act on in the next attempt. Normalize findings from reviewers, linters, tests, humans. Signals include `likely_valid`, `requirement_related`, `requires_code_change`, `security_relevant`, `data_integrity_relevant`.
 
 A high `security_relevant` is a **triage flag**, not a confirmed vulnerability.
 
 #### `jev_assess_risk`
 
-Whether a change looks like it warrants more expensive frontier review (auth, payment, schema, public API, …). Same rule: signals, not conclusions.
+Help the user decide whether to buy a deeper review before the next attempt. Whether a change looks like it warrants more expensive frontier review (auth, payment, schema, public API, …). Same rule: signals, not conclusions.
 
 #### `jev_judge`
 
-Generic Noul primitive: caller supplies `state` and a list of `{id, question}`.
+Generic Noul primitive: caller supplies `state` and a list of `{id, question}`. During implementation, ask about evidence toward the predefined goal so the user can decide the next attempt.
 
-Rejects obvious generative requests (`write this function`, `fix this bug`, `generate tests`, …). Ask one evidence-grounded proposition per question.
+Rejects generative work and product/planning decisions (`write this function`, `draft the Q3 roadmap`, `should we enter the EU market`, …). Ask one evidence-grounded proposition per question.
 
 ---
 
@@ -380,6 +391,10 @@ Provider limits:
 | `JEV_MCP_PROVIDER` | `typesafe` or `mock` |
 | `JEV_MCP_PROFILE` | `autonomous` / `interactive` / `custom` |
 | `JEV_MCP_SHADOW_MODE` | `true`/`false` |
+| `JEV_MCP_TRANSPORT` | `stdio` (default) or `streamable-http` |
+| `JEV_MCP_HTTP_TOKEN` | Required for HTTP |
+| `JEV_MCP_HTTP_HOST` / `PORT` / `PATH` | Default `127.0.0.1` / `8765` / `/mcp` |
+| `JEV_MCP_HTTP_BIND_ALL` | Required to bind non-loopback |
 | `JEV_MCP_LOG_LEVEL` | Logging (stderr) |
 | `JEV_MCP_DATA_DIR` | Cache + telemetry directory |
 | `JEV_MCP_CONFIG` | Explicit YAML path |
@@ -460,7 +475,7 @@ Messages are redacted (API keys, `ghp_`, `sk_live_`, JWTs, Slack, GitLab, npm, c
 
 ## Security
 
-Local stdio MCP. Attackers that matter: **malicious repo config**, **poisoned test output**, **confused agent**, **other local UIDs**.
+Local MCP (stdio by default; HTTP opt-in). Attackers that matter: **malicious repo config**, **poisoned test output**, **confused agent**, **other local UIDs**, **anything that can reach an HTTP bind**.
 
 Hardened in V1:
 
@@ -484,7 +499,7 @@ docker build -t jev-mcp .
 docker run --rm -i -e TYPESAFE_API_KEY jev-mcp --profile interactive --shadow
 ```
 
-`-i` is required (stdio). Do **not** `--env-file ~/.env` — that dumps unrelated secrets into the container. Image is multi-stage, non-root (`uid 10001`), data volume `/var/lib/jev-mcp`. Key is never baked in.
+`-i` is required for stdio. HTTP: publish `127.0.0.1:8765:8765` and set `JEV_MCP_HTTP_TOKEN` plus `JEV_MCP_HTTP_BIND_ALL=1` inside the container. Do **not** `--env-file ~/.env`. Image is multi-stage, non-root (`uid 10001`), data volume `/var/lib/jev-mcp`. Keys are never baked in.
 
 ---
 
@@ -533,7 +548,7 @@ benchmarks/           smaller fixture corpus
 
 | Command | Purpose |
 | --- | --- |
-| `jev-mcp` | stdio MCP server |
+| `jev-mcp` | MCP server (stdio default; `--transport streamable-http`) |
 | `python -m jev_mcp` | same |
 | `jev-mcp-doctor` / `python scripts/doctor.py` | config + optional `--ping` |
 | `python scripts/install.py` | print client MCP snippets |

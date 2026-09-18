@@ -5,16 +5,16 @@ from typing import Any
 from jev_mcp.engine import Engine
 from jev_mcp.models import ClientMeta, ContextCandidate, JudgmentQuestion
 from jev_mcp.normalization.text import normalize_text
-from jev_mcp.policy.decisions import context_tier
-from jev_mcp.tools._common import char_count, client_or_default, engine_profile
+from jev_mcp.policy.decisions import context_tier, rank_user_decision
+from jev_mcp.tools._common import char_count, client_or_default, engine_profile, require_predefined_goal
 from jev_mcp.util.limits import LimitReport, apply_char_limit, enforce_count
 
 TOOL_NAME = "jev_rank_context"
 TOOL_VERSION = "1.0.0"
 DESCRIPTION = (
+    "Help the user decide what to inspect next toward a predefined goal. "
     "Cheap ranking of repository context candidates before deeper frontier inspection. "
-    "Use when discovery produced many plausible files or symbols. Ranks only; never deletes "
-    "or permanently excludes candidates."
+    "Ranks only; never deletes or permanently excludes candidates."
 )
 
 
@@ -53,6 +53,7 @@ async def run_rank_context(
     client: ClientMeta | dict | None = None,
     use_cache: bool = True,
 ) -> dict[str, Any]:
+    task_goal = require_predefined_goal(task_goal)
     parsed = [ContextCandidate.model_validate(item) for item in candidates]
     client_meta = client_or_default(client)
     profile = engine_profile(engine, client_meta)
@@ -117,6 +118,7 @@ async def run_rank_context(
     return engine.finalize(
         {
             "candidates": ranked,
+            "user_decision": rank_user_decision(),
             "meta": engine.meta(result, cached=cached, request_id=request_id, tool=TOOL_NAME),
         },
         warnings=report.warnings + count_warnings,

@@ -25,6 +25,22 @@ async def test_judge_rejects_generative():
 
 async def test_judge_allows_evidence_question():
     reject_generative("Does the supplied evidence suggest we still lack tests?")
+    reject_generative("Does the supplied evidence suggest the plan lists guest checkout?")
+
+
+async def test_judge_rejects_planning_and_product_decisions():
+    for question in (
+        "write a sprint plan for guest checkout",
+        "should we enter the EU market",
+        "which architecture should we use",
+        "prioritize growth over checkout reliability",
+    ):
+        try:
+            reject_generative(question)
+        except JevError as exc:
+            assert exc.code.value == "INVALID_INPUT"
+            continue
+        raise AssertionError(f"accepted planning/product question: {question}")
 
 
 async def test_judge_uses_mock_provider(app_config):

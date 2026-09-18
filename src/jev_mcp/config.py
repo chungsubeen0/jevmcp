@@ -13,11 +13,49 @@ from jev_mcp.models import ProbabilityBands, StuckThresholds
 
 ProfileName = Literal["autonomous", "interactive", "custom"]
 ProviderName = Literal["typesafe", "mock"]
+TransportName = Literal["stdio", "streamable-http"]
+
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+class HttpConfig(BaseModel):
+    host: str = "127.0.0.1"
+    port: int = 8765
+    path: str = "/mcp"
+    require_token: bool = True
+    bind_all: bool = False
+    allow_anon: bool = False
+    token: str | None = None
+    max_sessions: int = 32
+    session_idle_timeout: float = 1800.0
+
+    @field_validator("port")
+    @classmethod
+    def _bounded_port(cls, value: int) -> int:
+        if not 1 <= value <= 65535:
+            raise ValueError("http.port must be between 1 and 65535")
+        return value
+
+    @field_validator("path")
+    @classmethod
+    def _absolute_path(cls, value: str) -> str:
+        if not value.startswith("/"):
+            raise ValueError("http.path must start with /")
+        return value
+
+    @field_validator("max_sessions")
+    @classmethod
+    def _bounded_sessions(cls, value: int) -> int:
+        if not 1 <= value <= 256:
+            raise ValueError("http.max_sessions must be between 1 and 256")
+        return value
 
 
 class ServerConfig(BaseModel):
     log_level: str = "INFO"
     shadow_mode: bool = True
+    transport: TransportName = "stdio"
+    http: HttpConfig = Field(default_factory=HttpConfig)
 
 
 class ProviderConfig(BaseModel):
@@ -137,6 +175,13 @@ def _strip_secrets(data: dict[str, Any]) -> dict[str, Any]:
     if isinstance(provider, dict):
         provider.pop("api_key", None)
         provider.pop("base_url", None)
+    server = data.get("server")
+    if isinstance(server, dict):
+        http = server.get("http")
+        if isinstance(http, dict):
+            http.pop("token", None)
+            http.pop("bind_all", None)
+            http.pop("allow_anon", None)
     return data
 
 
@@ -144,6 +189,10 @@ def _strip_project_privileges(data: dict[str, Any]) -> dict[str, Any]:
     telemetry = data.get("telemetry")
     if isinstance(telemetry, dict):
         telemetry.pop("store_content", None)
+    server = data.get("server")
+    if isinstance(server, dict):
+        server.pop("transport", None)
+        server.pop("http", None)
     return data
 
 
@@ -186,6 +235,25 @@ def _env_overrides() -> dict[str, Any]:
     shadow = os.environ.get("JEV_MCP_SHADOW_MODE")
     if shadow is not None:
         server["shadow_mode"] = shadow.strip().lower() in {"1", "true", "yes", "on"}
+    if transport := os.environ.get("JEV_MCP_TRANSPORT"):
+        server["transport"] = transport.strip()
+    http: dict[str, Any] = {}
+    if host := os.environ.get("JEV_MCP_HTTP_HOST"):
+        http["host"] = host.strip()
+    if port := os.environ.get("JEV_MCP_HTTP_PORT"):
+        http["port"] = int(port)
+    if path := os.environ.get("JEV_MCP_HTTP_PATH"):
+        http["path"] = path.strip()
+    if token := os.environ.get("JEV_MCP_HTTP_TOKEN"):
+        http["token"] = token
+    bind_all = os.environ.get("JEV_MCP_HTTP_BIND_ALL")
+    if bind_all is not None:
+        http["bind_all"] = bind_all.strip().lower() in {"1", "true", "yes", "on"}
+    allow_anon = os.environ.get("JEV_MCP_HTTP_ALLOW_ANON")
+    if allow_anon is not None:
+        http["allow_anon"] = allow_anon.strip().lower() in {"1", "true", "yes", "on"}
+    if http:
+        server["http"] = http
     if server:
         overrides["server"] = server
 

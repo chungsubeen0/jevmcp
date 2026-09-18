@@ -1,6 +1,10 @@
-# Jev MCP — local stdio server. Do not bake TYPESAFE_API_KEY into the image.
-# Run with an interactive TTY so MCP clients can hold stdin:
+# Jev MCP — local MCP server. Do not bake TYPESAFE_API_KEY or JEV_MCP_HTTP_TOKEN.
+# stdio (default):
 #   docker run --rm -i -e TYPESAFE_API_KEY jev-mcp --profile interactive --shadow
+# Streamable HTTP (publish loopback only; token required):
+#   docker run --rm -e TYPESAFE_API_KEY -e JEV_MCP_HTTP_TOKEN -e JEV_MCP_HTTP_BIND_ALL=1 \
+#     -e JEV_MCP_HTTP_HOST=0.0.0.0 -p 127.0.0.1:8765:8765 \
+#     jev-mcp --transport streamable-http --profile interactive --shadow
 # Do not pass a whole ~/.env file; it may contain unrelated secrets.
 
 FROM python:3.12-slim AS build
@@ -37,6 +41,7 @@ USER jev
 WORKDIR /home/jev
 VOLUME ["/var/lib/jev-mcp"]
 
-# MCP speaks JSON-RPC on stdin/stdout. Logs go to stderr.
+# MCP speaks JSON-RPC on stdin/stdout, or Streamable HTTP when --transport is set.
+EXPOSE 8765
 ENTRYPOINT ["jev-mcp"]
 CMD ["--profile", "interactive", "--shadow"]

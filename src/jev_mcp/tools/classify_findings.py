@@ -6,15 +6,16 @@ from jev_mcp.engine import Engine
 from jev_mcp.models import ClientMeta, Finding, JudgmentQuestion, Requirement
 from jev_mcp.normalization.requirements import normalize_requirement_text
 from jev_mcp.normalization.text import normalize_text
-from jev_mcp.tools._common import char_count, client_or_default
+from jev_mcp.policy.decisions import findings_user_decision
+from jev_mcp.tools._common import char_count, client_or_default, require_predefined_goal
 from jev_mcp.util.limits import LimitReport, enforce_count
 
 TOOL_NAME = "jev_classify_findings"
 TOOL_VERSION = "1.0.0"
 DESCRIPTION = (
-    "Cheap normalization of review findings from tests, linters, humans, or frontier reviewers. "
-    "Use to triage a large finding set before expensive reasoning. Returns likelihood signals only. "
-    "Does not confirm that a vulnerability or defect exists."
+    "Help the user decide which findings to act on in the next attempt toward a "
+    "predefined goal. Cheap normalization of review findings. Returns likelihoods "
+    "and user_decision. Does not confirm that a vulnerability or defect exists."
 )
 
 SIGNAL_IDS = (
@@ -63,6 +64,7 @@ async def run_classify_findings(
     client: ClientMeta | dict | None = None,
     use_cache: bool = True,
 ) -> dict[str, Any]:
+    task_goal = require_predefined_goal(task_goal)
     parsed = [Finding.model_validate(item) for item in findings]
     reqs = [Requirement.model_validate(item) for item in (requirements or [])]
     client_meta = client_or_default(client)
@@ -112,6 +114,7 @@ async def run_classify_findings(
         {
             "findings": classified,
             "note": "Signals are triage likelihoods. They do not confirm a defect or vulnerability.",
+            "user_decision": findings_user_decision(),
             "meta": engine.meta(result, cached=cached, request_id=request_id, tool=TOOL_NAME),
         },
         warnings=find_warnings + req_warnings,

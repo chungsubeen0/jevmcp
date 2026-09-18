@@ -5,6 +5,7 @@
 server:
   log_level: INFO
   shadow_mode: true
+  # transport, bind, and HTTP token come from the environment / CLI only.
 
 provider:
   name: typesafe

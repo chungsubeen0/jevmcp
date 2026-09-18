@@ -31,6 +31,7 @@ async def test_local_related_failure_is_classified(app_config):
     assert result["classification"]["relationship"] == "LIKELY_RELATED"
     assert result["classification"]["scope"] == "LIKELY_LOCAL"
     assert result["classification"]["escalation"] == "NORMAL"
+    assert "Do not skip the failing check" in result["user_decision"]
 
 
 async def test_unrelated_environment_failure(app_config):

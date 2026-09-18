@@ -30,6 +30,7 @@ async def test_repeated_failure_becomes_stuck(app_config):
     )
     assert result["status"] == "LIKELY_STUCK"
     assert result["control_signal"] == "REASSESS"
+    assert "user should change the hypothesis" in result["user_decision"]
 
 
 async def test_advanced_failure_is_not_stuck(app_config):
@@ -51,3 +52,4 @@ async def test_advanced_failure_is_not_stuck(app_config):
     )
     assert result["status"] == "PROGRESSING"
     assert result["control_signal"] == "CONTINUE"
+    assert "predefined goal" in result["user_decision"]

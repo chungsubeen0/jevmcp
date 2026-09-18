@@ -33,3 +33,15 @@ def engine_profile(engine: Engine, client: ClientMeta | None):
     # Client metadata is telemetry only. Profile comes from server config.
     _ = client
     return engine.profile
+
+
+def require_predefined_goal(goal: str) -> str:
+    text = (goal or "").strip()
+    if not text:
+        raise JevError(
+            ErrorCode.INVALID_INPUT,
+            "Implementation tools need a predefined goal. "
+            "Jev helps the user decide among attempts toward that goal; it does not set the goal.",
+            retryable=False,
+        )
+    return text

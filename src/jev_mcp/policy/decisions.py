@@ -133,6 +133,97 @@ def context_tier(
     return "MEDIUM"
 
 
+def attempt_user_decision(status: StuckStatus, signal: ControlSignal) -> str:
+    """User-facing next-attempt advice. Never implements or changes the goal."""
+    mapping: dict[tuple[StuckStatus, ControlSignal], str] = {
+        ("PROGRESSING", "CONTINUE"): (
+            "Stay on this approach. The next attempt should still aim at the predefined goal."
+        ),
+        ("UNCERTAIN", "CONTINUE"): (
+            "Evidence is mixed. The user decides whether to stay or change approach. "
+            "The predefined goal stays fixed."
+        ),
+        ("LIKELY_STUCK", "REASSESS"): (
+            "Same strategy, little progress. The user should change the hypothesis "
+            "before another similar attempt toward the goal."
+        ),
+        ("LIKELY_STUCK", "ESCALATE"): (
+            "Repeating without progress. The user should stop this line of attempts "
+            "and choose a different approach toward the goal."
+        ),
+    }
+    return mapping.get(
+        (status, signal),
+        "The user decides the next attempt. The predefined goal is unchanged.",
+    )
+
+
+def completion_user_decision(status: CompletionStatus) -> str:
+    if status == "INCOMPLETE":
+        return (
+            "Goal not reached. Keep implementing the listed requirements. "
+            "The user decides the next attempt."
+        )
+    if status == "REVIEW_REQUIRED":
+        return (
+            "Possible gaps. The user reviews the listed requirements before treating "
+            "the goal as done."
+        )
+    return (
+        "Evidence looks complete. The user still decides whether the goal is achieved. "
+        "Not a ship or merge decision."
+    )
+
+
+def triage_user_decision(classification: dict[str, str]) -> str:
+    if classification.get("escalation") == "ELEVATED":
+        return (
+            "Deeper reasoning may help. The user decides whether to escalate investigation "
+            "toward the predefined goal."
+        )
+    relationship = classification.get("relationship")
+    if relationship == "LIKELY_RELATED":
+        return (
+            "Failure likely comes from this attempt. Stay on the current change toward "
+            "the goal. Do not skip the failing check."
+        )
+    if relationship == "LIKELY_UNRELATED":
+        return (
+            "Failure may be off the goal path. The user decides scope. "
+            "The failing check still stays in this attempt."
+        )
+    return (
+        "Scope unclear. The user decides how to spend the next attempt. "
+        "The predefined goal is unchanged."
+    )
+
+
+def rank_user_decision() -> str:
+    return (
+        "Inspect HIGH-tier candidates first for the next attempt toward the goal. "
+        "Do not drop MEDIUM or LOW items."
+    )
+
+
+def findings_user_decision() -> str:
+    return (
+        "Use these likelihoods to decide which findings to act on in the next attempt. "
+        "They do not confirm a defect."
+    )
+
+
+def risk_user_decision(review_warranted: bool) -> str:
+    if review_warranted:
+        return (
+            "Change looks sensitive. The user decides whether to buy a deeper review "
+            "before the next attempt. Not a security conclusion."
+        )
+    return (
+        "No high-sensitivity signal. The user still decides the next attempt toward "
+        "the goal. Not a safety certification."
+    )
+
+
 def risk_review_warranted(signals: dict[str, float], bands: ProbabilityBands) -> bool:
     sensitive_keys = (
         "security_sensitive",
